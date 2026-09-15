@@ -114,19 +114,14 @@ site_estatico/
 
 ## Pipeline de dados
 
-```
-Scraping --> Limpeza --> Feature Eng. --> Treino --> Export --> Deploy
-  ZAP        Filtros    Geoscore      Optuna    JSON/JS    GitHub
-  VivaReal   Dedup      Clusters      5-Fold    .joblib    Pages
-  OLX        Outliers   Topics        R2=0.998
-  Chave Mao  NaN        Metragem
-```
+| Etapa | Ferramentas | Detalhes |
+|:------|:------------|:---------|
+| **Scraping** | ZAP, VivaReal, OLX, Chave na Mao | Coleta automatizada de imoveis |
+| **Limpeza** | Filtros, Dedup, Outliers, NaN | Tratamento de dados invalidos |
+| **Feature Eng.** | Geoscore, Clusters, Topics, Metragem | Criacao de variaveis derivadas |
+| **Treino** | Optuna, 5-Fold CV, R2=0.998 | Otimizacao de hiperparametros |
+| **Export** | JSON/JS, .joblib | Exportacao do modelo e dados |
+| **Deploy** | GitHub Pages | Hospedagem estatica gratuita |
 
 ---
 
-<p align="center">
-  <sub>Dados atualizados automaticamente via GitHub Actions</sub><br>
-  <a href="https://jeferson100.github.io/Analise-imoveis/">
-    <img src="https://img.shields.io/badge/ABRIR%20SITE-jeferson100.github.io-1a237e?style=flat-square&logo=githubpages&logoColor=white" alt="Abrir Site">
-  </a>
-</p>
