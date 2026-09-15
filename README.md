@@ -1,10 +1,8 @@
 # Analise de Imoveis - Site Estatico
 
-[![Site](https://img.shields.io/badge/SITE-Jeferson100-blue?style=for-the-badge)](https://jeferson100.github.io/Analise-imoveis/)
+[![Site](https://img.shields.io/badge/SITE-Analise%20de%20Imoveis-blue?style=for-the-badge)](https://jeferson100.github.io/Analise-imoveis/)
 
 Painel web para visualizacao e analise de imoveis a venda e aluguel em 11 cidades brasileiras.
-
-**Acesse em:** https://jeferson100.github.io/Analise-imoveis/
 
 ## Cidades disponiveis
 
