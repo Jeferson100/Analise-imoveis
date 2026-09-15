@@ -1,28 +1,39 @@
-# Analise de Imoveis - Site Estatico
+<div align="center">
 
-[![Site](https://img.shields.io/badge/SITE-Analise%20de%20Imoveis-blue?style=for-the-badge)](https://jeferson100.github.io/Analise-imoveis/)
+# Analise de Imoveis
 
-Painel web para visualizacao e analise de imoveis a venda e aluguel em 11 cidades brasileiras.
+Painel web para visualizacao e analise de imoveis a venda e aluguel
+em **11 cidades** brasileiras com **280+ mil imoveis**.
+
+<br>
+
+[![Abrir Site](https://img.shields.io/badge/ABRIR%20SITE-1a237e?style=for-the-badge&logo=githubpages&logoColor=white)](https://jeferson100.github.io/Analise-imoveis/)
+[![Stack](https://img.shields.io/badge/STACK-HTML--JS--CSS-212121?style=for-the-badge&logo=javascript&logoColor=white)]()
+[![Demo](https://img.shields.io/badge/DEMO-disponivel-00C853?style=for-the-badge&logo=googlechrome&logoColor=white)]()
+
+</div>
+
+---
 
 ## Cidades disponiveis
 
-| Cidade | Estado | Imoveis | Aluguel | Predicao de Preco |
-|--------|--------|---------|---------|-------------------|
+| Cidade | Estado | Imoveis | Aluguel | Predicao |
+|:-------|:------:|--------:|:-------:|:--------:|
 | Joinville | SC | ~24k | ✅ | ✅ |
-| Florianopolis | SC | ~50k | - | - |
-| Blumenau | SC | ~15k | - | - |
+| Florianopolis | SC | ~50k | — | — |
+| Blumenau | SC | ~15k | — | — |
 | Balneario Camboriu | SC | ~16k | ✅ | ✅ |
-| Balneario Picarras | SC | ~5k | - | - |
-| Itai | SC | ~12k | - | - |
-| Itapema | SC | ~12k | - | - |
-| Itapoa | SC | ~4k | - | - |
-| Jaragua do Sul | SC | ~4k | - | - |
-| Curitiba | PR | ~39k | - | - |
-| Sao Paulo | SP | ~106k | - | - |
+| Balneario Picarras | SC | ~5k | — | — |
+| Itai | SC | ~12k | — | — |
+| Itapema | SC | ~12k | — | — |
+| Itapoa | SC | ~4k | — | — |
+| Jaragua do Sul | SC | ~4k | — | — |
+| Curitiba | PR | ~39k | — | — |
+| Sao Paulo | SP | ~106k | — | — |
 
 ## Funcionalidades
 
-### Modo Venda
+### :house: Modo Venda
 - Metricas gerais: preco por m2, valor do imovel, dimensoes
 - Filtros: bairro, tipo, quartos, banheiros, vagas, metragem
 - Remocao de outliers (IQR e percentil 99.6%)
@@ -30,59 +41,92 @@ Painel web para visualizacao e analise de imoveis a venda e aluguel em 11 cidade
 - Mapa com geolocalizacao (Leaflet)
 - Graficos interativos (Plotly.js)
 
-### Modo Aluguel
+### :key: Modo Aluguel
 - Joinville e Balneario Camboriu possuem dados de aluguel
 - Metricas: valor do aluguel, condominio, IPTU
 
-### Predicao de Preco (Joinville e Balneario Camboriu)
+### :brain: Predicao de Preco
+> Disponivel para Joinville e Balneario Camboriu
+
 - Formulario para prever o valor de um imovel
-- Modelo: GradientBoostingRegressor (200 arvores)
-- Inferencia 100% em JavaScript (sem servidor)
+- Modelo: **GradientBoostingRegressor** (200 arvores)
+- Inferencia **100% em JavaScript** (sem servidor)
 - Intervalo de predicao via conformal prediction
 
-## Como funciona
+## Arquitetura
 
-### Estrutura de arquivos
 ```
 site_estatico/
-├── index.html              # Pagina principal
-├── css/style.css           # Estilos
+├── index.html                # Pagina principal
+├── css/
+│   └── style.css             # Estilos com gradientes e responsividade
 ├── js/
-│   ├── app.js              # Logica principal (filtros, tabela, mapa, graficos)
-│   └── predicao.js         # Inferencia de preco em JS puro
+│   ├── app.js                # Logica: filtros, tabela, mapa, graficos
+│   └── predicao.js           # Inferencia de preco em JS puro
 └── data/
-    ├── dados_{cidade}.js          # Dados dos imoveis (carregado via <script>)
-    ├── stats_{cidade}.js          # Estatisticas por bairro
-    ├── bairro_stats_{cidade}.json # Stats detalhados
-    ├── imoveis_{cidade}.json      # Dados completos
-    ├── modelo_{cidade}.json       # Modelo de predicao (arvores + preprocessing)
-    └── config_aluguel.json        # Cidades com dados de aluguel
+    ├── dados_{cidade}.js      # Dados dos imoveis (via <script>)
+    ├── stats_{cidade}.js      # Estatisticas por bairro
+    ├── modelo_{cidade}.json   # Modelo de predicao (arvores + preprocessing)
+    └── config_aluguel.json    # Cidades com dados de aluguel
 ```
 
-### Carregamento de dados
-- Os dados sao carregados via tags `<script>` dinamicas
-- Funciona com `file://` protocol (sem servidor)
+### Como os dados sao carregados
+
+- Tags `<script>` dinamicas para cada cidade
+- Funciona via `file://` protocol (sem servidor)
 - Cada cidade tem seus proprios arquivos JS/JSON
 
-### Predicao de preco
-- O modelo e exportado como JSON (arvores de decisao + parametros de preprocessing)
-- Pre-processamento em JS: imputacao -> Yeo-Johnson -> StandardScaler -> RobustScaler
-- One-Hot Encoding para variaveis categoricas
-- Predicao via GradientBoostingRegressor puro em JavaScript
+### Pipeline de predicao
 
-## Tecnologias
+```
+  Entrada do usuario
+        |
+        v
++-----------------------------------+
+| Pre-processamento (JavaScript)    |
+|  1. Imputacao (mediana)           |
+|  2. Yeo-Johnson                   |
+|  3. StandardScaler                |
+|  4. RobustScaler                  |
+|  5. One-Hot Encoding              |
++-----------------------------------+
+        |
+        v
++-----------------------------------+
+| GradientBoostingRegressor         |
+|  200 arvores de decisao           |
+|  Exportado como JSON puro         |
++-----------------------------------+
+        |
+        v
+  Preco predito + intervalo
+```
 
-- **HTML/CSS/JS** puro (sem frameworks)
-- **Plotly.js** — graficos interativos
-- **Leaflet.js** — mapas com OpenStreetMap
-- **GradientBoostingRegressor** — modelo de predicao (scikit-learn)
-- **JSON** — exportacao do modelo para inferencia client-side
+## Stack
 
-## Atualizacao dos dados
+| Tecnologia | Uso |
+|:-----------|:----|
+| **HTML/CSS/JS** | Interface pura, sem frameworks |
+| **Plotly.js** | Graficos interativos (scatter, histograma, barras) |
+| **Leaflet.js** | Mapa com geolocalizacao (OpenStreetMap) |
+| **GradientBoostingRegressor** | Modelo de predicao (scikit-learn) |
+| **JSON** | Exportacao do modelo para inferencia client-side |
 
-Os dados sao atualizados automaticamente via GitHub Actions:
-1. Scraping de sites de imoveis (ZAP, VivaReal, OLX, Chave na Mao)
-2. Limpeza e processamento
-3. Treinamento de modelos
-4. Exportacao para JSON/JS
-5. Deploy via GitHub Pages
+## Pipeline de dados
+
+```
+Scraping --> Limpeza --> Feature Eng. --> Treino --> Export --> Deploy
+  ZAP        Filtros    Geoscore      Optuna    JSON/JS    GitHub
+  VivaReal   Dedup      Clusters      5-Fold    .joblib    Pages
+  OLX        Outliers   Topics        R2=0.998
+  Chave Mao  NaN        Metragem
+```
+
+---
+
+<p align="center">
+  <sub>Dados atualizados automaticamente via GitHub Actions</sub><br>
+  <a href="https://jeferson100.github.io/Analise-imoveis/">
+    <img src="https://img.shields.io/badge/ABRIR%20SITE-jeferson100.github.io-1a237e?style=flat-square&logo=githubpages&logoColor=white" alt="Abrir Site">
+  </a>
+</p>
