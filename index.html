@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Análise de Imóveis</title>
-    <link rel="stylesheet" href="css/style.css?v=8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/v4-verde.css?v=1">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,6 +14,7 @@
 <body>
     <header>
         <div class="header-title">
+            <span class="version-tag">Padrão</span>
             <h1 id="titulo-app">🏠 Análise de Imóveis</h1>
         </div>
         <div class="header-controls">
@@ -35,6 +38,10 @@
                 <option value="predicao">Predição</option>
             </select>
             <span id="data-atualizacao" class="badge"></span>
+            <nav class="version-nav">
+                <a href="index.html" class="active">Padrão</a>
+                <a href="v1-original.html">Original</a>
+            </nav>
         </div>
     </header>
 
@@ -200,6 +207,13 @@
 
             <section class="full-width">
                 <h2>🗺️ Mapa dos Imóveis</h2>
+                <div class="map-legend">
+                    <span class="lg-green">R$/m² &lt; 4k</span>
+                    <span class="lg-blue">4k – 6k</span>
+                    <span class="lg-amber">6k – 8k</span>
+                    <span class="lg-red">8k – 12k</span>
+                    <span class="lg-purple">12k+</span>
+                </div>
                 <div id="mapa"></div>
             </section>
 
@@ -209,6 +223,8 @@
             </section>
         </main>
     </div>
+
+    <p class="footer-nav">Versão Padrão · <a href="v1-original.html">Original</a></p>
 
     <script src="js/scores.js?v=8"></script>
     <script src="js/predicao.js?v=8"></script>
