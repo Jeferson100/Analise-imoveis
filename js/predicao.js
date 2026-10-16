@@ -5,6 +5,16 @@ var clusterData = null;
 var targetTransform = 'none';
 var topicModel = null;
 
+// Método das features igual ao app: JSON oficial do treino primeiro,
+// introspecção do pipeline (feature_names) como fallback
+function getModelFeatures() {
+    if (modeloJson && modeloJson.features_info && modeloJson.features_info.features
+        && modeloJson.features_info.features.length) {
+        return modeloJson.features_info.features;
+    }
+    return (modeloJson && modeloJson.feature_names) || [];
+}
+
 var CIDADES_ESTADO = {
     'joinville': 'SC', 'balneario_camboriu': 'SC', 'florianopolis': 'SC',
     'blumenau': 'SC', 'itajai': 'SC', 'itapema': 'SC',
@@ -29,10 +39,12 @@ function carregarPredicao(cidade) {
         fetch(pasta + 'modelo_' + cidade + '.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
         fetch(pasta + 'bairro_stats_' + cidade + '.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
         fetch(pasta + 'cluster_' + cidade + '.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+        fetch(pasta + 'pois_' + cidade + '.json').then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
     ]).then(function(results) {
         modeloJson = results[0];
         bairroStats = results[1];
         clusterData = results[2];
+        POIS = results[3]; // null se a cidade não tiver POIs exportados -> fallback bairro
 
         if (Array.isArray(bairroStats)) {
             var dict = {};
@@ -49,15 +61,17 @@ function carregarPredicao(cidade) {
 
         targetTransform = modeloJson.target_transform || 'none';
         configPredicao = {
-            todas_features: modeloJson.feature_names,
+            todas_features: getModelFeatures(),
             features_categoricas: ['tipo_imovel', 'bairro', 'tem_elevador', 'novo_lancamento', 'dist_centro_faixa', 'bairro_cluster'],
-            features_tematicas: modeloJson.feature_names.filter(function(f) { return f.indexOf('componente_') === 0; }),
+            features_tematicas: getModelFeatures().filter(function(f) { return f.indexOf('componente_') === 0; }),
         };
 
         topicModel = modeloJson.topics || null;
 
-        console.log('Predicao JSON carregada:', cidade, '|', modeloJson.ensemble.type,
-            '|', modeloJson.ensemble.n_estimators, 'trees');
+        var ensInfo = modeloJson.ensemble || {};
+        console.log('Predicao JSON carregada:', cidade, '|', ensInfo.type || modeloJson.model_type || '?',
+            '|', ensInfo.n_estimators != null ? ensInfo.n_estimators + ' trees' : 'n/a');
+        renderizarFormularioPredicao();
         popularBairrosPredicao();
         return true;
     });
@@ -74,6 +88,165 @@ function popularBairrosPredicao() {
         opt.textContent = b;
         sel.appendChild(opt);
     });
+}
+
+// ── Formulário dinâmico: só mostra inputs das features do modelo carregado ──
+var DERIVADAS = ['lat', 'lng', 'dist_centro', 'dist_centro_faixa',
+    'score_escola_privada', 'score_escola_publica', 'score_hospitais',
+    'score_mercado', 'score_farmacia', 'score_parque', 'score_seguranca', 'score_educacao',
+    'metro_quadrado_bairro_mean', 'metro_quadrado_bairro_median', 'valor_bairro_mean',
+    'bairro_rank', 'bairro_cluster', 'quartos_por_metro', 'vagas_por_metro',
+    'banheiros_por_quarto', 'sem_rua', 'componente_0', 'componente_1',
+    'componente_2', 'componente_3'];
+
+var WIDGETS = {
+    metragem:         { tipo: 'number',   rotulo: 'Metragem (m²)', min: 10, max: 10000, padrao: 70, grupo: 'imovel' },
+    quartos:          { tipo: 'number',   rotulo: 'Quartos', min: 0, max: 20, padrao: 3, grupo: 'imovel' },
+    banheiros:        { tipo: 'number',   rotulo: 'Banheiros', min: 0, max: 20, padrao: 2, grupo: 'imovel' },
+    vagas:            { tipo: 'number',   rotulo: 'Vagas', min: 0, max: 20, padrao: 1, grupo: 'imovel' },
+    suites:           { tipo: 'select',   rotulo: 'Suítes', opcoes: [['','Não informado'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5+']], grupo: 'imovel' },
+    tipo_imovel:      { tipo: 'select',   rotulo: 'Tipo', opcoes: [['apartamento','Apartamento'],['casa','Casa']], grupo: 'imovel' },
+    predicao_idade:   { tipo: 'number',   rotulo: 'Idade do imóvel (anos)', min: 0, max: 200, padrao: 0, ajuda: '0 = novo', grupo: 'imovel' },
+    bairro:           { tipo: 'select_bairro', rotulo: 'Bairro', grupo: 'local' },
+    novo_lancamento:  { tipo: 'checkbox', rotulo: 'Novo lançamento', grupo: 'flags' },
+    tem_elevador:     { tipo: 'checkbox', rotulo: 'Tem elevador', grupo: 'flags' },
+    priv_churrasqueira: { tipo: 'checkbox', rotulo: 'Churrasqueira', grupo: 'priv' },
+    priv_varanda:     { tipo: 'checkbox', rotulo: 'Varanda', grupo: 'priv' },
+    priv_piscina:     { tipo: 'checkbox', rotulo: 'Piscina', grupo: 'priv' },
+    priv_closet:      { tipo: 'checkbox', rotulo: 'Closet', grupo: 'priv' },
+    comum_piscina:    { tipo: 'checkbox', rotulo: 'Piscina', grupo: 'comum' },
+    comum_elevador:   { tipo: 'checkbox', rotulo: 'Elevador', grupo: 'comum' },
+    comum_salao:      { tipo: 'checkbox', rotulo: 'Salão de festas', grupo: 'comum' },
+    comum_churrasqueira: { tipo: 'checkbox', rotulo: 'Churrasqueira', grupo: 'comum' },
+    comum_playground: { tipo: 'checkbox', rotulo: 'Playground', grupo: 'comum' },
+    comum_academia:   { tipo: 'checkbox', rotulo: 'Academia/Fitness', grupo: 'comum' },
+    comum_spa:        { tipo: 'checkbox', rotulo: 'Spa/Sauna', grupo: 'comum' },
+};
+
+var GRUPOS_PRED = [
+    ['imovel', '🏠 Imóvel'],
+    ['local', '📍 Localização'],
+    ['flags', '⚙️ Características'],
+    ['priv', '🛋️ Privativas'],
+    ['comum', '🏢 Comuns'],
+    ['extras', '➕ Outras variáveis do modelo'],
+];
+
+function idCampo(feature) {
+    var mapa = { tipo_imovel: 'pred-tipo', bairro: 'pred-bairro',
+        novo_lancamento: 'pred-novo', tem_elevador: 'pred-elevador',
+        predicao_idade: 'pred-idade' };
+    if (mapa[feature]) return mapa[feature];
+    return 'pred-' + feature.replace(/_/g, '-');
+}
+
+function renderizarFormularioPredicao() {
+    var box = document.getElementById('pred-form-dinamico');
+    if (!box || !modeloJson) return;
+    box.innerHTML = '';
+    var feats = getModelFeatures();
+    var temTopicos = feats.some(function(f) { return f.indexOf('componente_') === 0; });
+
+    function criarCampo(feature, cfg) {
+        var wrap = document.createElement('div');
+        var id = idCampo(feature);
+        if (cfg.tipo === 'checkbox') {
+            var lab = document.createElement('label');
+            lab.className = 'checkbox-inline';
+            var inp = document.createElement('input');
+            inp.type = 'checkbox'; inp.id = id;
+            inp.setAttribute('data-feature', feature);
+            lab.appendChild(inp);
+            lab.appendChild(document.createTextNode(' ' + cfg.rotulo));
+            wrap.appendChild(lab);
+        } else if (cfg.tipo === 'select' || cfg.tipo === 'select_bairro') {
+            var lab2 = document.createElement('label');
+            lab2.textContent = cfg.rotulo;
+            var sel = document.createElement('select');
+            sel.id = id;
+            sel.setAttribute('data-feature', feature);
+            (cfg.opcoes || []).forEach(function(op) {
+                var o = document.createElement('option');
+                o.value = op[0]; o.textContent = op[1];
+                sel.appendChild(o);
+            });
+            lab2.appendChild(sel);
+            wrap.appendChild(lab2);
+        } else {
+            var lab3 = document.createElement('label');
+            lab3.textContent = cfg.rotulo;
+            var num = document.createElement('input');
+            num.type = 'number'; num.id = id;
+            num.setAttribute('data-feature', feature);
+            if (cfg.min !== undefined) num.min = cfg.min;
+            if (cfg.max !== undefined) num.max = cfg.max;
+            if (cfg.padrao !== undefined) num.value = cfg.padrao;
+            if (cfg.ajuda) num.placeholder = cfg.ajuda;
+            lab3.appendChild(num);
+            wrap.appendChild(lab3);
+        }
+        return wrap;
+    }
+
+    var colLocal = null;
+    var localNaTela = false;
+    GRUPOS_PRED.forEach(function(g) {
+        var col = document.createElement('div');
+        col.className = 'pred-form-col';
+        var titulo = document.createElement('h4');
+        titulo.textContent = g[1];
+        col.appendChild(titulo);
+        var tem = false;
+        feats.forEach(function(f) {
+            if (DERIVADAS.indexOf(f) !== -1) return;
+            var cfg = WIDGETS[f] ||
+                { tipo: 'number', rotulo: f, padrao: 0, grupo: 'extras' };
+            if ((cfg.grupo || 'extras') !== g[0]) return;
+            col.appendChild(criarCampo(f, cfg));
+            tem = true;
+        });
+        if (g[0] === 'local') {
+            [['pred-rua', 'text', 'Rua (opcional)', 'Rua...'],
+             ['pred-numero', 'number', 'Número (opcional)', 'Nº']].forEach(function(c) {
+                var lab = document.createElement('label');
+                lab.textContent = c[2];
+                var inp = document.createElement('input');
+                inp.type = c[1]; inp.id = c[0]; inp.placeholder = c[3] || '';
+                if (c[1] === 'number') inp.min = 0;
+                lab.appendChild(inp);
+                col.appendChild(lab);
+            });
+            tem = true;
+            if (temTopicos) {
+                var labd = document.createElement('label');
+                labd.textContent = 'Descrição (opcional)';
+                var ta = document.createElement('textarea');
+                ta.id = 'pred-descricao'; ta.rows = 3;
+                ta.placeholder = 'Detalhes do imóvel...';
+                labd.appendChild(ta);
+                col.appendChild(labd);
+            }
+        }
+        if (tem) {
+            box.appendChild(col);
+            if (g[0] === 'local') { colLocal = col; localNaTela = true; }
+        }
+    });
+    // O bairro alimenta as derivadas de localização (valor_bairro_mean,
+    // metro_quadrado_bairro_*, scores...): renderiza sempre que houver stats,
+    // mesmo que o modelo não o use como feature bruta.
+    if (bairroStats && feats.indexOf('bairro') === -1) {
+        if (!localNaTela) {
+            colLocal = document.createElement('div');
+            colLocal.className = 'pred-form-col';
+            var tituloLocal = document.createElement('h4');
+            tituloLocal.textContent = '📍 Localização';
+            colLocal.appendChild(tituloLocal);
+            box.appendChild(colLocal);
+        }
+        colLocal.appendChild(criarCampo('bairro', WIDGETS.bairro));
+        popularBairrosPredicao();
+    }
 }
 
 function geocodificar(rua, numero, bairro, cidade) {
@@ -201,10 +374,10 @@ function aplicarTopicos(descricao) {
 }
 
 function montarFeatures(inputs) {
-    var metragem = inputs.metragem;
-    var quartos = inputs.quartos;
-    var banheiros = inputs.banheiros;
-    var vagas = inputs.vagas;
+    var metragem = inputs.metragem || 70;
+    var quartos = (inputs.quartos !== undefined && inputs.quartos !== null && inputs.quartos !== '') ? inputs.quartos : 3;
+    var banheiros = (inputs.banheiros !== undefined && inputs.banheiros !== null && inputs.banheiros !== '') ? inputs.banheiros : 2;
+    var vagas = inputs.vagas || 0;
 
     var features = {
         metragem: metragem,
@@ -220,9 +393,16 @@ function montarFeatures(inputs) {
         quartos_por_metro: quartos / (metragem + 1),
         vagas_por_metro: vagas / (metragem + 1),
         banheiros_por_quarto: banheiros / (quartos + 1),
-        sem_rua: 0,
+        sem_rua: inputs.rua ? 0 : 1,
         predicao_idade: inputs.idade || 0,
     };
+
+    // Amenities + qualquer feature futura: merge genérico de inputs.extras
+    if (inputs.extras) {
+        Object.keys(inputs.extras).forEach(function(k) {
+            if (features[k] === undefined) features[k] = inputs.extras[k];
+        });
+    }
 
     if (bairroStats && bairroStats[inputs.bairro]) {
         var bs = bairroStats[inputs.bairro];
@@ -242,9 +422,19 @@ function montarFeatures(inputs) {
     var scoreFeatures = ['score_escola_privada', 'score_escola_publica', 'score_hospitais',
         'score_mercado', 'score_farmacia', 'score_parque', 'score_seguranca', 'score_educacao'];
     var scores = {};
+    // 1) ao vivo por coordenada (precisão de imóvel) -> 2) média do bairro -> 3) 0.
+    // Sem cache entre predições: lat/lng mudam a cada clique (cálculo = milissegundos).
+    var scoresVivos = null;
+    if (typeof POIS !== 'undefined' && POIS && inputs.lat && inputs.lng) {
+        scoresVivos = calcularScores(inputs.lat, inputs.lng);
+    }
     scoreFeatures.forEach(function(sf) {
-        features[sf] = (bairroStats && bairroStats[inputs.bairro] && bairroStats[inputs.bairro][sf] !== undefined)
-            ? bairroStats[inputs.bairro][sf] : 0;
+        if (scoresVivos && scoresVivos[sf] !== undefined) {
+            features[sf] = scoresVivos[sf];
+        } else {
+            features[sf] = (bairroStats && bairroStats[inputs.bairro] && bairroStats[inputs.bairro][sf] !== undefined)
+                ? bairroStats[inputs.bairro][sf] : 0;
+        }
         scores[sf] = features[sf];
     });
 
@@ -403,18 +593,47 @@ function executarPredicao() {
         return;
     }
 
-    var metragem = parseInt(document.getElementById('pred-metragem').value) || 70;
-    var quartos = parseInt(document.getElementById('pred-quartos').value) || 3;
-    var banheiros = parseInt(document.getElementById('pred-banheiros').value) || 2;
-    var vagas = parseInt(document.getElementById('pred-vagas').value) || 1;
-    var tipoImovel = document.getElementById('pred-tipo').value || 'apartamento';
-    var bairro = document.getElementById('pred-bairro').value;
-    var novoLancamento = document.getElementById('pred-novo').checked || false;
-    var temElevador = document.getElementById('pred-elevador').checked || false;
-    var rua = document.getElementById('pred-rua').value || '';
-    var numero = parseInt(document.getElementById('pred-numero').value) || 0;
-    var descricao = document.getElementById('pred-descricao').value || '';
-    var idade = parseInt(document.getElementById('pred-idade').value) || 0;
+    // Coleta genérica: lê todo [data-feature] renderizado pelo modelo da vez
+    var inputs = { cidade: cidade };
+    var catFeats = (configPredicao && configPredicao.features_categoricas) || [];
+    Array.prototype.forEach.call(
+        document.querySelectorAll('#pred-form-dinamico [data-feature]'),
+        function(el) {
+            var f = el.getAttribute('data-feature');
+            if (el.type === 'checkbox') { inputs[f] = el.checked ? 1 : 0; return; }
+            if (catFeats.indexOf(f) !== -1 || el.tagName === 'SELECT') {
+                if (f === 'suites') inputs[f] = el.value || 0;
+                else inputs[f] = el.value;
+                return;
+            }
+            inputs[f] = parseFloat(el.value);
+            if (isNaN(inputs[f])) inputs[f] = 0;
+        }
+    );
+    // Helpers de geocoding (não são features do modelo)
+    var ruaEl = document.getElementById('pred-rua');
+    var numeroEl = document.getElementById('pred-numero');
+    var descEl = document.getElementById('pred-descricao');
+    var rua = (ruaEl && ruaEl.value) || '';
+    var numero = (numeroEl && parseInt(numeroEl.value)) || 0;
+    var descricao = (descEl && descEl.value) || '';
+    inputs.rua = rua; inputs.numero = numero; inputs.descricao = descricao;
+    // Aliases que montarFeatures espera
+    inputs.idade = inputs.predicao_idade || 0;
+    inputs.tipo_imovel = inputs.tipo_imovel || 'apartamento';
+    inputs.novo_lancamento = inputs.novo_lancamento ? 1 : 0;
+    inputs.tem_elevador = inputs.tem_elevador ? 1 : 0;
+    // Extras genéricos (amenities + features futuras desconhecidas)
+    var baseKeys = { cidade: 1, rua: 1, numero: 1, descricao: 1, idade: 1,
+        lat: 1, lng: 1, metragem: 1, quartos: 1, banheiros: 1, vagas: 1,
+        tipo_imovel: 1, bairro: 1, novo_lancamento: 1, tem_elevador: 1,
+        predicao_idade: 1 };
+    inputs.extras = {};
+    Object.keys(inputs).forEach(function(k) {
+        if (k !== 'extras' && !baseKeys[k]) inputs.extras[k] = inputs[k];
+    });
+    var metragem = inputs.metragem || 70;
+    var bairro = inputs.bairro || '';
 
     var resultDiv = document.getElementById('pred-resultado');
     var btn = document.getElementById('pred-btn');
@@ -425,13 +644,8 @@ function executarPredicao() {
     geocodificar(rua, numero, bairro, cidade).then(function(coords) {
         resultDiv.innerHTML = '<p style="color:#666;text-align:center;padding:1rem;">Calculando predicao...</p>';
 
-        var features = montarFeatures({
-            metragem: metragem, quartos: quartos, banheiros: banheiros,
-            vagas: vagas, tipo_imovel: tipoImovel, bairro: bairro,
-            novo_lancamento: novoLancamento, tem_elevador: temElevador,
-            lat: coords.lat, lng: coords.lng, descricao: descricao,
-            cidade: cidade, idade: idade,
-        });
+        inputs.lat = coords.lat; inputs.lng = coords.lng;
+        var features = montarFeatures(inputs);
 
         try {
             var valorPredito = preverValor(features);
